@@ -6,7 +6,7 @@ mention or picture text look the attachments up themselves and pass their texts 
 
 ```toml
 [dependencies]
-fetlife-action-text = { git = "https://github.com/fetlife/action-text", tag = "v0.1.0" }
+fetlife-action-text = { git = "https://github.com/fetlife/action-text", tag = "v0.1.1" }
 ```
 
 ```rust

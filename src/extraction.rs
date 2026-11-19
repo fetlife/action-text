@@ -202,11 +202,6 @@ impl Extraction {
 
     fn quote(&mut self, start: usize) {
         let text = &self.text[start..];
-        if blank(text) {
-            self.text.truncate(start);
-            self.text.push_str("“”");
-            return;
-        }
         let first = text
             .char_indices()
             .find(|(_, c)| !whitespace(*c))
@@ -219,6 +214,9 @@ impl Extraction {
         if let (Some(first), Some(last)) = (first, last) {
             self.text.insert(start + last, '”');
             self.text.insert(start + first, '“');
+        } else {
+            self.text.truncate(start);
+            self.text.push_str("“”");
         }
     }
 
@@ -268,14 +266,13 @@ fn attribute<'a>(element: &'a Element, name: &str) -> Option<&'a str> {
         .map(|attr| attr.value.as_ref())
 }
 
-// Ruby's `\s`, which Action Text uses to place quotes.
+// ASCII only, like Ruby's `\s` and `blank?` under fast_blank, which fetlife/web loads.
 fn whitespace(c: char) -> bool {
     matches!(c, ' ' | '\t' | '\n' | '\r' | '\u{b}' | '\u{c}')
 }
 
-// Rails' `blank?`, which also counts Unicode spaces such as `&nbsp;`.
 fn blank(text: &str) -> bool {
-    text.chars().all(char::is_whitespace)
+    text.chars().all(whitespace)
 }
 
 fn chomp(mut text: &str) -> &str {
@@ -305,11 +302,7 @@ mod tests {
         );
         assert_eq!(plain("<p>a</p><div></div>b"), "a\n\n\nb");
         assert_eq!(plain("<blockquote> </blockquote>x"), "“”x");
-        assert_eq!(plain("<blockquote>&nbsp;</blockquote>x"), "“”x");
-        assert_eq!(
-            plain("<blockquote>&nbsp;a&nbsp;</blockquote>"),
-            "“\u{a0}a\u{a0}”"
-        );
+        assert_eq!(plain("<blockquote>&nbsp;</blockquote>x"), "“\u{a0}”\n\nx");
         assert_eq!(
             plain("<figure><figcaption>Caption<br></figcaption></figure>"),
             "[Caption]"
@@ -376,7 +369,7 @@ mod tests {
     #[test]
     fn distinguishes_formatting_from_text_and_handles_deep_nesting() {
         assert!(
-            !RichText::parse("<ul><li></li></ul><p>&nbsp;</p><script>hidden</script>")
+            !RichText::parse("<ul><li></li></ul><script>hidden</script>")
                 .analysis()
                 .has_text
         );
